@@ -29,6 +29,7 @@ const nowVoice = van.state<SpeechSynthesisVoice>({} as SpeechSynthesisVoice);
 
 const uttr = new SpeechSynthesisUtterance("");
 uttr.onend = () => (canSpeech.val = true);
+uttr.onstart = (e) => console.log(e);
 
 const combinations = (arr: string[]) =>
   arr
@@ -49,9 +50,19 @@ const testText = combinations([
 const lang = ["ja-JP", "en-US"];
 
 const Hello = () => {
+  van.derive(() => (uttr.voice = nowVoice.val));
+
+  const speechVoice = (text: string) => {
+    if (speechSynthesis.speaking) return;
+    uttr.text = text;
+    speechSynthesis.speak(uttr);
+    canSpeech.val = false;
+  };
+
   const setVoiceData = () => {
-    voices.val = speechSynthesis.getVoices();
-    if (voices.val.length === 0) return;
+    const a = speechSynthesis.getVoices();
+    if (a.length <= voices.val.length) return;
+    voices.val = a;
     uttr.lang = lang[0];
     nowVoice.val = voices.val.find((v) => v.lang === uttr.lang)!;
   };
@@ -65,7 +76,6 @@ const Hello = () => {
         onchange: (e) => {
           uttr.lang = e.target.value;
           nowVoice.val = voices.val.find((v) => v.lang === e.target.value)!;
-          console.log(uttr);
         },
       },
       lang.map((l) => option({ value: l }, l))
@@ -84,19 +94,12 @@ const Hello = () => {
     input({
       type: "text",
       value: text,
-      onchange: (e) => {
-        text.val = e.target.value;
-      },
+      onchange: (e) => (text.val = e.target.value),
       disabled: van.derive(() => !canSpeech.val),
     }),
     button(
       {
-        onclick: () => {
-          if (speechSynthesis.speaking) return;
-          uttr.text = text.val;
-          speechSynthesis.speak(uttr);
-          canSpeech.val = false;
-        },
+        onclick: () => speechVoice(text.val),
         disabled: van.derive(() => !canSpeech.val),
       },
       "読み上げ"
@@ -105,12 +108,7 @@ const Hello = () => {
       testText.map((t) =>
         button(
           {
-            onclick: () => {
-              if (speechSynthesis.speaking) return;
-              uttr.text = t;
-              speechSynthesis.speak(uttr);
-              canSpeech.val = false;
-            },
+            onclick: () => speechVoice(t),
             disabled: van.derive(() => !canSpeech.val),
           },
           t
@@ -128,15 +126,7 @@ const Hello = () => {
           voices.val.map((v) =>
             tr(
               keys.map((k) => td(v[k as keyof SpeechSynthesisVoice])),
-              button(
-                {
-                  onclick: () => {
-                    nowVoice.val = v;
-                    uttr.voice = v;
-                  },
-                },
-                "change"
-              )
+              button({ onclick: () => (nowVoice.val = v) }, "change")
             )
           )
         )
