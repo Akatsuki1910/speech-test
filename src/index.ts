@@ -30,6 +30,9 @@ const nowVoice = van.state<SpeechSynthesisVoice>({} as SpeechSynthesisVoice);
 const uttr = new SpeechSynthesisUtterance("");
 uttr.onend = () => (canSpeech.val = true);
 uttr.onstart = (e) => console.log(e);
+uttr.pitch = 1;
+uttr.rate = 1;
+uttr.volume = 1;
 
 const combinations = (arr: string[]) =>
   arr
@@ -47,38 +50,49 @@ const testText = combinations([
   "hello",
   "テキストだよ",
 ]);
-const lang = ["ja-JP", "en-US"];
+
+const LANG = ["ja-JP", "en-US"] as const;
+type SpeechVoiceKey = (typeof LANG)[number];
+const speechVoiceMap = new Map<SpeechVoiceKey, string[]>([
+  ["ja-JP", ["Kyoko"]],
+  ["en-US", ["Samantha", "Flo", "Ralph"]],
+]);
+
+const setSpeechLang = (lang: SpeechVoiceKey) => {
+  uttr.lang = lang;
+  nowVoice.val =
+    (speechVoiceMap
+      .get(uttr.lang as typeof lang)
+      ?.map((n) =>
+        voices.val.find((v) => v.voiceURI.includes(n) && v.lang === uttr.lang)
+      ) ?? [])[0] ?? voices.val.find((v) => v.lang === uttr.lang)!;
+};
+
+const speechVoice = (text: string) => {
+  if (speechSynthesis.speaking) return;
+  uttr.text = text;
+  speechSynthesis.speak(uttr);
+  canSpeech.val = false;
+};
+
+const setVoiceData = () => {
+  const a = speechSynthesis.getVoices();
+  if (a.length <= voices.val.length) return;
+  voices.val = a;
+  setSpeechLang("ja-JP");
+};
 
 const Hello = () => {
   van.derive(() => (uttr.voice = nowVoice.val));
 
-  const speechVoice = (text: string) => {
-    if (speechSynthesis.speaking) return;
-    uttr.text = text;
-    speechSynthesis.speak(uttr);
-    canSpeech.val = false;
-  };
-
-  const setVoiceData = () => {
-    const a = speechSynthesis.getVoices();
-    if (a.length <= voices.val.length) return;
-    voices.val = a;
-    uttr.lang = lang[0];
-    nowVoice.val = voices.val.find((v) => v.lang === uttr.lang)!;
-  };
   speechSynthesis.addEventListener("voiceschanged", setVoiceData);
   setVoiceData();
 
   return div(
     p(`status: ${canUseSpeechSynthesisText}`),
     select(
-      {
-        onchange: (e) => {
-          uttr.lang = e.target.value;
-          nowVoice.val = voices.val.find((v) => v.lang === e.target.value)!;
-        },
-      },
-      lang.map((l) => option({ value: l }, l))
+      { onchange: (e) => setSpeechLang(e.target.value as SpeechVoiceKey) },
+      [...speechVoiceMap.keys()].map((l) => option({ value: l }, l))
     ),
     p("↓use"),
     table(
