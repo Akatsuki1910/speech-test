@@ -4,8 +4,6 @@ const {
   div,
   input,
   button,
-  ul,
-  li,
   table,
   thead,
   tbody,
@@ -25,7 +23,7 @@ const text = van.state("Hello, World!");
 const canSpeech = van.state(true);
 
 const voices = van.state<SpeechSynthesisVoice[]>([]);
-const nowVoice = van.state<SpeechSynthesisVoice>({} as SpeechSynthesisVoice);
+const nowVoice = van.state<SpeechSynthesisVoice | undefined>(undefined);
 
 const uttr = new SpeechSynthesisUtterance("");
 uttr.onend = () => (canSpeech.val = true);
@@ -54,7 +52,7 @@ const testText = combinations([
 const LANG = ["ja-JP", "en-US"] as const;
 type SpeechVoiceKey = (typeof LANG)[number];
 const speechVoiceMap = new Map<SpeechVoiceKey, string[]>([
-  ["ja-JP", ["Kyoko"]],
+  ["ja-JP", ["Kyoko", "Sayaka"]],
   ["en-US", ["Samantha", "Flo", "Ralph"]],
 ]);
 
@@ -83,7 +81,9 @@ const setVoiceData = () => {
 };
 
 const Hello = () => {
-  van.derive(() => (uttr.voice = nowVoice.val));
+  van.derive(() => {
+    if (nowVoice.val?.lang) uttr.voice = nowVoice.val;
+  });
 
   speechSynthesis.addEventListener("voiceschanged", setVoiceData);
   setVoiceData();
@@ -100,7 +100,8 @@ const Hello = () => {
       tbody(
         tr(
           keys.map(
-            (k) => () => td(nowVoice.val![k as keyof SpeechSynthesisVoice])
+            (k) => () =>
+              td((nowVoice.val ?? {})[k as keyof SpeechSynthesisVoice])
           )
         )
       )
