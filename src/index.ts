@@ -1,4 +1,5 @@
 import van from "vanjs-core";
+
 const {
   p,
   div,
@@ -59,11 +60,13 @@ const speechVoiceMap = new Map<SpeechVoiceKey, string[]>([
 const setSpeechLang = (lang: SpeechVoiceKey) => {
   uttr.lang = lang;
   nowVoice.val =
-    (speechVoiceMap
-      .get(uttr.lang as typeof lang)
-      ?.map((n) =>
-        voices.val.find((v) => v.voiceURI.includes(n) && v.lang === uttr.lang)
-      ) ?? [])[0] ?? voices.val.find((v) => v.lang === uttr.lang)!;
+    (speechVoiceMap.get(uttr.lang as typeof lang)?.reduce((c, n) => {
+      const v = voices.val.find(
+        (v) => v.voiceURI.includes(n) && v.lang === uttr.lang
+      );
+      return v ? [...c, v] : c;
+    }, [] as SpeechSynthesisVoice[]) ?? [])[0] ??
+    voices.val.find((v) => v.lang === uttr.lang)!;
 };
 
 const speechVoice = (text: string) => {
